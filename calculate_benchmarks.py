@@ -1,0 +1,149 @@
+import json
+import torch
+import numpy as np
+from tqdm import tqdm
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+from nltk.translate.meteor_score import meteor_score
+from rouge_score import rouge_scorer
+from sentence_transformers import SentenceTransformer, util
+import nltk
+
+def load_data(json_path):
+    with open(json_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+class BenchmarkEvaluator:
+    def __init__(self, device='cuda'):
+        self.device = device if torch.cuda.is_available() else 'cpu'
+        print(f">>> Initializing Extractors on {self.device}...")
+        
+        # 1. SBERT Model (通用语义相似度)
+        self.sbert_model = SentenceTransformer('all-MiniLM-L6-v2', device=self.device)
+        
+        # 2. SimCSE Model (对比学习优化的句向量，擅长判断相似性)
+        # 这里使用 princeton-nlp 的 SimCSE 或者兼容的 SBERT 模型
+        self.simcse_model = SentenceTransformer('princeton-nlp/sup-simcse-bert-base-uncased', device=self.device)
+        
+        # 3. ROUGE Scorer
+        self.rouge_scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
+        
+        # Smooth function for BLEU
+        self.smooth = SmoothingFunction().method1
+
+    def compute_sbert_sim(self, preds, refs):
+        """计算 SBERT 余弦相似度"""
+        embeddings1 = self.sbert_model.encode(preds, convert_to_tensor=True)
+        embeddings2 = self.sbert_model.encode(refs, convert_to_tensor=True)
+        cosine_scores = util.cos_sim(embeddings1, embeddings2)
+        # 取对角线元素 (一一对应)
+        return torch.diag(cosine_scores).mean().item()
+
+    def compute_simcse_sim(self, preds, refs):
+        """计算 SimCSE 余弦相似度"""
+        embeddings1 = self.simcse_model.encode(preds, convert_to_tensor=True)
+        embeddings2 = self.simcse_model.encode(refs, convert_to_tensor=True)
+        cosine_scores = util.cos_sim(embeddings1, embeddings2)
+        return torch.diag(cosine_scores).mean().item()
+
+    def compute_traditional_metrics(self, preds, refs_list):
+        """
+        计算 BLEU, ROUGE, METEOR
+        注意: refs_list 是 list of lists, 因为一个样本可能有多个 GT
+        """
+        bleu1_scores = []
+        bleu4_scores = []
+        rouge_l_scores = []
+        meteor_scores = []
+
+        for pred, gt_candidates in zip(preds, refs_list):
+            # Tokenize
+            pred_tokens = nltk.word_tokenize(pred.lower())
+            gt_tokens_list = [nltk.word_tokenize(g.lower()) for g in gt_candidates]
+
+            # --- BLEU ---
+            bleu1 = sentence_bleu(gt_tokens_list, pred_tokens, weights=(1, 0, 0, 0), smoothing_function=self.smooth)
+            bleu4 = sentence_bleu(gt_tokens_list, pred_tokens, weights=(0.25, 0.25, 0.25, 0.25), smoothing_function=self.smooth)
+            bleu1_scores.append(bleu1)
+            bleu4_scores.append(bleu4)
+
+            # --- ROUGE-L ---
+            # Rouge scorer handles multiple references by taking the max, mostly expects strings
+            # 这里简单处理，取所有GT中最高的 ROUGE 分数
+            r_scores = [self.rouge_scorer.score(g, pred)['rougeL'].fmeasure for g in gt_candidates]
+            rouge_l_scores.append(max(r_scores) if r_scores else 0.0)
+
+            # --- METEOR ---
+            # NLTK meteor expects list of strings for reference provided tokenized
+            # 注意: 新版 nltk meteor_score 接收的是 list of tokens 和 tokens
+            try:
+                # 尝试适配不同版本的 NLTK
+                m_score = meteor_score(gt_tokens_list, pred_tokens)
+            except AttributeError:
+                 # 旧版可能传字符串
+                 m_score = meteor_score(gt_candidates, pred)
+            meteor_scores.append(m_score)
+
+        return {
+            "BLEU-1": np.mean(bleu1_scores),
+            "BLEU-4": np.mean(bleu4_scores),
+            "ROUGE-L": np.mean(rouge_l_scores),
+            "METEOR": np.mean(meteor_scores)
+        }
+
+def main():
+    # --- 配置 ---
+    BASE_DIR = "/root/jyz/my_mmLLM"
+    INPUT_FILE = f"{BASE_DIR}/processed_dataset/test_result_epoch_9_with_50.json"
+    
+    print(f"Loading results from {INPUT_FILE}...")
+    data = load_data(INPUT_FILE)
+    
+    # 提取 Prediction 和 Ground Truth
+    # text_ground_truth 是 list of strings
+    # predicted_caption 是 string
+    
+    valid_data = [d for d in data if 'predicted_caption' in d and 'texts_ground_truth' in d]
+    
+    preds = [d['predicted_caption'] for d in valid_data]
+    # GT list (nested list for traditional metrics)
+    refs_list = [d['texts_ground_truth'] for d in valid_data]
+    # For embedding metrics, we usually compare against the first GT or average pairwise.
+    # Here we take the first GT for embedding speed comparison
+    refs_single = [d['texts_ground_truth'][0] for d in valid_data]
+
+    print(f"evaluating {len(preds)} samples...")
+
+    evaluator = BenchmarkEvaluator()
+
+    # 1. 计算 Traditional Metrics
+    print("Calculating BLEU, ROUGE, METEOR...")
+    trad_metrics = evaluator.compute_traditional_metrics(preds, refs_list)
+
+    # 2. 计算 Semantic Metrics
+    print("Calculating SBERT Similarity...")
+    sbert_score = evaluator.compute_sbert_sim(preds, refs_single)
+    
+    print("Calculating SimCSE Similarity...")
+    simcse_score = evaluator.compute_simcse_sim(preds, refs_single)
+
+    # 3. 汇总结果
+    results = {
+        **trad_metrics,
+        "SBERT-Sim": sbert_score,
+        "SimCSE-Sim": simcse_score
+    }
+
+    print("\n" + "="*40)
+    print(" FINAL BENCHMARK RESULTS")
+    print("="*40)
+    for k, v in results.items():
+        print(f"{k:<15}: {v:.4f}")
+    print("="*40)
+
+    # 保存
+    with open(f"{BASE_DIR}/processed_dataset/benchmark_metrics_epoch_9_with_50.json", 'w') as f:
+        json.dump(results, f, indent=4)
+        print("metrics saved to processed_dataset/benchmark_metrics_epoch_9_with_50.json")
+
+if __name__ == "__main__":
+    main()

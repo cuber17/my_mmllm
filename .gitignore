@@ -1,0 +1,8 @@
+logs/
+huggingface/
+*.pt
+__pycache__/
+processed_dataset/imgs/
+processed_dataset/imgs_test/
+vis_outputs/
+*.tar.gz

@@ -1,0 +1,35 @@
+{
+    "action_category": {
+        "locomotion": 0,
+        "stationary_activity": 1,
+        "gesture": 2,
+        "exercise": 3,
+        "transition": 4
+    },
+    "posture": {
+        "upright": 0,
+        "sitting": 1,
+        "crouching": 2,
+        "lying": 3,
+        "bending": 4
+    },
+    "intensity": {
+        "static": 0,
+        "slow": 1,
+        "normal": 2,
+        "vigorous": 3
+    },
+    "active_part": {
+        "full_body": 0,
+        "upper_body": 1,
+        "lower_body": 2,
+        "head_neck": 3
+    },
+    "trajectory": {
+        "in_place": 0,
+        "forwards": 1,
+        "backwards": 2,
+        "lateral_move": 3,
+        "dynamic_turn": 4
+    }
+}

@@ -1,0 +1,15 @@
+action_category:
+    locomotion, stationary_activity, gesture, exercise, transition
+ 
+posture:
+    upright, sitting, crouching, lying, bending
+
+intensity:
+    static, slow, normal, vigorous
+  
+
+active_part:
+    full_body, upper_body, lower_body, head_neck
+
+trajectory:
+    in_place, forwards, backwards, lateral_move, dynamic_turn
