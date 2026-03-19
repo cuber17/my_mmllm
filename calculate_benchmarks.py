@@ -129,8 +129,8 @@ def main():
     # 3. 汇总结果
     results = {
         **trad_metrics,
-        "SBERT-Sim": sbert_score,
-        "SimCSE-Sim": simcse_score
+        "SBERT": sbert_score,
+        "SimCSE": simcse_score
     }
 
     print("\n" + "="*40)
