@@ -71,7 +71,7 @@ STAGE2_DIR = f"{BASE_DIR}/logs/stage2_20260121_210018/{STAGE2_EPOCH}"
 PROJ_CKPT = f"{STAGE2_DIR}/projector.pth"
 LORA_PATH = f"{STAGE2_DIR}"
 ```
-- epoch9 测评结果 
+- epoch9 阈值设为 0.9 测评结果
 ```json
 {
     "BLEU-1": 0.5431045762459199,
@@ -81,4 +81,19 @@ LORA_PATH = f"{STAGE2_DIR}"
     "SBERT-Sim": 0.5900965929031372,
     "SimCSE-Sim": 0.7091032862663269
 }
+```
+
+## Qwen2.5-3B
+
+- 批量评测命令
+```bash
+python evaluate_pipeline.py   --llm_key qwen25   --llm_base_path /root/jyz/my_mmLLM/huggingface/Qwen2.5-3B-Instruct   --lora_path logs/stage2_qwen25_3b_20260402_115702/epoch_9   --output_json /root/jyz/my_mmLLM/processed_dataset/test_result_qwen25_epoch_9_with_90.json   --confidence_threshold 0.9
+```
+
+### benchmark指标
+
+## Phi-3.5-mini
+- 批量评测命令
+```bash
+python evaluate_pipeline.py --llm_key phi35  --llm_base_path /root/jyz/my_mmLLM/huggingface/Phi-3.5-mini-instruct  --lora_path logs/stage2_phi35_20260403_031610/epoch_9 --output_json /root/jyz/my_mmLLM/processed_dataset/test_result_phi35_epoch_9_with_90.json  --confidence_threshold 0.9
 ```

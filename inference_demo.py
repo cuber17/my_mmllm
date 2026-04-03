@@ -46,14 +46,8 @@ class MMExpertInference:
         self.radar_encoder.to(device).eval()
 
         # C. 加载 Projector
-        print("Loading Projector...")
-        # 假设维度：ViT Base 768 -> Phi-3 3072
-        self.projector = RadarProjector(encoder_dim=768, llm_dim=3072).to(device)
-        self.projector.load_state_dict(torch.load(projector_path, map_location=device))
-        self.projector.eval()
-
         # D. 加载 LLM & LoRA
-        print("Loading LLM (Phi-3) & LoRA...")
+        print("Loading LLM & LoRA...")
         self.tokenizer = AutoTokenizer.from_pretrained(llm_base_path, trust_remote_code=False)
         base_model = AutoModelForCausalLM.from_pretrained(
             llm_base_path, 
@@ -63,6 +57,13 @@ class MMExpertInference:
         )
         self.llm = PeftModel.from_pretrained(base_model, llm_adapter_path)
         self.llm.eval()
+
+        # C. 加载 Projector (根据当前 LLM hidden size 动态构建)
+        print("Loading Projector...")
+        llm_hidden_size = int(getattr(base_model.config, "hidden_size"))
+        self.projector = RadarProjector(encoder_dim=768, llm_dim=llm_hidden_size).to(device)
+        self.projector.load_state_dict(torch.load(projector_path, map_location=device))
+        self.projector.eval()
         
         print(">>> Model Loading Complete.")
 
@@ -155,7 +156,7 @@ class MMExpertInference:
         tokens = self.tokenizer(text_prompt, return_tensors="pt", add_special_tokens=False).to(self.device)
         
         # 5. 拼接 Embedding: [Radar, Text]
-        text_embeds = self.llm.model.model.embed_tokens(tokens.input_ids)
+        text_embeds = self.llm.get_input_embeddings()(tokens.input_ids)
         inputs_embeds = torch.cat([radar_embeds, text_embeds], dim=1)
         attention_mask = torch.cat([
             torch.ones(1, radar_embeds.shape[1], device=self.device),
@@ -169,6 +170,7 @@ class MMExpertInference:
             self.tokenizer.convert_tokens_to_ids("<|endoftext|>"),
             self.tokenizer.convert_tokens_to_ids("<|end|>")
         ]
+        terminators = [t for t in terminators if isinstance(t, int) and t >= 0]
         
         with torch.no_grad():
             generate_ids = self.llm.generate(

@@ -1,9 +1,17 @@
 import json
 import os
+import argparse
 import torch
 from tqdm import tqdm
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from inference_demo import MMExpertInference
+
+
+LLM_PRESETS = {
+    "phi3mini": "Phi-3-mini-4k-instruct",
+    "phi35": "Phi-3.5-mini-instruct",
+    "qwen25": "Qwen2.5-3B-Instruct",
+}
 
 def calculate_metrics(predictions, ground_truths):
     """计算 BLEU-1, BLEU-4"""
@@ -23,31 +31,79 @@ def calculate_metrics(predictions, ground_truths):
         
     return {k: v / n for k, v in scores.items()}
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Evaluate mmLLM pipeline with selectable LLM backend")
+    parser.add_argument("--base_dir", type=str, default="/root/jyz/my_mmLLM")
+    parser.add_argument("--llm_key", type=str, default="phi3mini", choices=list(LLM_PRESETS.keys()))
+    parser.add_argument("--llm_base_path", type=str, default="", help="Override base LLM path")
+    parser.add_argument("--lora_path", type=str, default="", help="Stage2 epoch directory that contains LoRA adapter")
+    parser.add_argument("--projector_path", type=str, default="", help="Override projector checkpoint path")
+    parser.add_argument("--output_json", type=str, default="")
+    parser.add_argument("--test_json", type=str, default="")
+    parser.add_argument("--data_root", type=str, default="")
+    parser.add_argument("--attr_exp_id", type=str, default="attributes_20260131_145653")
+    parser.add_argument("--radar_ckpt", type=str, default="")
+    parser.add_argument("--confidence_threshold", type=float, default=0.50)
+    parser.add_argument("--device", type=str, default="cuda")
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
+
     # --- 1. 路径和环境配置 ---
-    BASE_DIR = "/root/jyz/my_mmLLM"
-    DATA_ROOT = f"{BASE_DIR}/processed_dataset/"
-    TEST_JSON = f"{DATA_ROOT}/test.json"
-    OUTPUT_JSON = f"{DATA_ROOT}/test_result_epoch_9_with_50.json"
+    BASE_DIR = args.base_dir
+    DATA_ROOT = args.data_root if args.data_root else f"{BASE_DIR}/processed_dataset/"
+    TEST_JSON = args.test_json if args.test_json else f"{DATA_ROOT}/test.json"
+    default_out = f"{DATA_ROOT}/test_result_{args.llm_key}.json"
+    OUTPUT_JSON = args.output_json if args.output_json else default_out
 
     # 模型 Checkpoint 路径 (请确保与 logs 文件夹中实际存在的一致)
     # 属性模型
-    ATTR_EXP_ID = "attributes_20260131_145653"
+    ATTR_EXP_ID = args.attr_exp_id
     ATTR_CKPT = f"{BASE_DIR}/logs/{ATTR_EXP_ID}/best.pth"
     ATTR_MAP = f"{BASE_DIR}/logs/{ATTR_EXP_ID}/label_maps.json"
     
     # Stage 1 Encoder
-    RADAR_CKPT = f"{BASE_DIR}/logs/clip_20260120_224659/radar_encoder_only.pth"
+    RADAR_CKPT = args.radar_ckpt if args.radar_ckpt else f"{BASE_DIR}/logs/clip_20260120_224659/radar_encoder_only.pth"
     
-    # Stage 2 Projector & LoRA
-    # 注意: 如果 logs 里没有 epoch_2, 请改为 epoch_1 或 epoch_0
-    STAGE2_EPOCH = "epoch_9" 
-    STAGE2_DIR = f"{BASE_DIR}/logs/stage2_20260131_122203/{STAGE2_EPOCH}"
-    PROJ_CKPT = f"{STAGE2_DIR}/projector.pth"
-    LORA_PATH = f"{STAGE2_DIR}"
+    # Stage 2 Projector & LoRA: 默认需要你通过 --lora_path 指定当前实验目录
+    if args.lora_path:
+        LORA_PATH = args.lora_path
+    else:
+        raise ValueError("Please provide --lora_path to the trained Stage2 epoch directory.")
+
+    PROJ_CKPT = args.projector_path if args.projector_path else os.path.join(LORA_PATH, "projector.pth")
     
     # LLM Base
-    LLM_BASE = f"{BASE_DIR}/huggingface/Phi-3-mini-4k-instruct"
+    if args.llm_base_path:
+        LLM_BASE = args.llm_base_path
+    else:
+        llm_dir = LLM_PRESETS[args.llm_key]
+        LLM_BASE = os.path.join(BASE_DIR, "huggingface", llm_dir)
+
+    if not os.path.exists(LLM_BASE):
+        raise FileNotFoundError(f"LLM base path not found: {LLM_BASE}")
+
+    if not os.path.exists(LORA_PATH):
+        raise FileNotFoundError(f"LoRA path not found: {LORA_PATH}")
+
+    if not os.path.exists(PROJ_CKPT):
+        raise FileNotFoundError(f"Projector checkpoint not found: {PROJ_CKPT}")
+
+    eval_device = args.device
+    if eval_device == "cuda" and not torch.cuda.is_available():
+        eval_device = "cpu"
+        print("CUDA is not available, fallback to CPU.")
+
+    print("=== Evaluation Config ===")
+    print(f"LLM Key      : {args.llm_key}")
+    print(f"LLM Base     : {LLM_BASE}")
+    print(f"LoRA Path    : {LORA_PATH}")
+    print(f"Projector    : {PROJ_CKPT}")
+    print(f"Output JSON  : {OUTPUT_JSON}")
+    print(f"Device       : {eval_device}")
+    print("=========================")
 
     # --- 2. 初始化模型 ---
     print(">>> Initializing Inference Model...")
@@ -60,7 +116,8 @@ def main():
             llm_base_path=LLM_BASE,
             llm_adapter_path=LORA_PATH,
             data_json_path=TEST_JSON,  # 传入数据索引路径
-            data_root_dir=DATA_ROOT    # 传入数据根目录
+            data_root_dir=DATA_ROOT,   # 传入数据根目录
+            device=eval_device,
         )
     except Exception as e:
         print(f"Failed to initialize model: {e}")
@@ -71,7 +128,7 @@ def main():
         data_list = json.load(f)
     
     # [新增] 定义置信度阈值
-    CONFIDENCE_THRESHOLD = 0.50 
+    CONFIDENCE_THRESHOLD = args.confidence_threshold
     print(f"Starting evaluation with Attribute Confidence Threshold = {CONFIDENCE_THRESHOLD}")
     
     final_results = []

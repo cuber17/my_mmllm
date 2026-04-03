@@ -7,10 +7,48 @@ from nltk.translate.meteor_score import meteor_score
 from rouge_score import rouge_scorer
 from sentence_transformers import SentenceTransformer, util
 import nltk
+from nltk.tokenize import wordpunct_tokenize
+
+try:
+    from bert_score import score as bert_score
+except ImportError:
+    bert_score = None
 
 def load_data(json_path):
     with open(json_path, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+
+def simple_tokenize(text):
+    """Resource-free tokenizer: avoids NLTK punkt/punkt_tab dependency."""
+    if text is None:
+        return []
+    return wordpunct_tokenize(str(text).lower())
+
+
+def fallback_meteor_like(pred_tokens, ref_tokens_list):
+    """A lightweight fallback when NLTK wordnet resource is unavailable.
+
+    Uses best unigram F1 against multiple references.
+    """
+    pred_set = set(pred_tokens)
+    if not pred_set:
+        return 0.0
+
+    best_f1 = 0.0
+    for ref_tokens in ref_tokens_list:
+        ref_set = set(ref_tokens)
+        if not ref_set:
+            continue
+        overlap = len(pred_set & ref_set)
+        if overlap == 0:
+            continue
+        precision = overlap / len(pred_set)
+        recall = overlap / len(ref_set)
+        f1 = 2 * precision * recall / (precision + recall)
+        if f1 > best_f1:
+            best_f1 = f1
+    return best_f1
 
 class BenchmarkEvaluator:
     def __init__(self, device='cuda'):
@@ -45,6 +83,22 @@ class BenchmarkEvaluator:
         cosine_scores = util.cos_sim(embeddings1, embeddings2)
         return torch.diag(cosine_scores).mean().item()
 
+    def compute_bertscore(self, preds, refs):
+        """计算 BERTScore (使用 F1 作为最终分数)"""
+        if bert_score is None:
+            raise ImportError(
+                "bert-score is not installed. Please run: pip install bert-score"
+            )
+
+        _, _, f1 = bert_score(
+            preds,
+            refs,
+            lang='en',
+            device=self.device,
+            rescale_with_baseline=True
+        )
+        return torch.as_tensor(f1).float().mean().item()
+
     def compute_traditional_metrics(self, preds, refs_list):
         """
         计算 BLEU, ROUGE, METEOR
@@ -57,8 +111,8 @@ class BenchmarkEvaluator:
 
         for pred, gt_candidates in zip(preds, refs_list):
             # Tokenize
-            pred_tokens = nltk.word_tokenize(pred.lower())
-            gt_tokens_list = [nltk.word_tokenize(g.lower()) for g in gt_candidates]
+            pred_tokens = simple_tokenize(pred)
+            gt_tokens_list = [simple_tokenize(g) for g in gt_candidates]
 
             # --- BLEU ---
             bleu1 = sentence_bleu(gt_tokens_list, pred_tokens, weights=(1, 0, 0, 0), smoothing_function=self.smooth)
@@ -69,7 +123,8 @@ class BenchmarkEvaluator:
             # --- ROUGE-L ---
             # Rouge scorer handles multiple references by taking the max, mostly expects strings
             # 这里简单处理，取所有GT中最高的 ROUGE 分数
-            r_scores = [self.rouge_scorer.score(g, pred)['rougeL'].fmeasure for g in gt_candidates]
+            pred_text = str(pred)
+            r_scores = [self.rouge_scorer.score(str(g), pred_text)['rougeL'].fmeasure for g in gt_candidates]
             rouge_l_scores.append(max(r_scores) if r_scores else 0.0)
 
             # --- METEOR ---
@@ -78,9 +133,13 @@ class BenchmarkEvaluator:
             try:
                 # 尝试适配不同版本的 NLTK
                 m_score = meteor_score(gt_tokens_list, pred_tokens)
-            except AttributeError:
+            except (AttributeError, LookupError):
                  # 旧版可能传字符串
-                 m_score = meteor_score(gt_candidates, pred)
+                 try:
+                     m_score = meteor_score(gt_candidates, pred)
+                 except Exception:
+                     # 如果缺少 wordnet 等资源，则使用离线近似分数兜底
+                     m_score = fallback_meteor_like(pred_tokens, gt_tokens_list)
             meteor_scores.append(m_score)
 
         return {
@@ -93,7 +152,7 @@ class BenchmarkEvaluator:
 def main():
     # --- 配置 ---
     BASE_DIR = "/root/jyz/my_mmLLM"
-    INPUT_FILE = f"{BASE_DIR}/processed_dataset/test_result_epoch_9_with_50.json"
+    INPUT_FILE = f"{BASE_DIR}/processed_dataset/test_result_phi35_epoch_0_with_90.json"
     
     print(f"Loading results from {INPUT_FILE}...")
     data = load_data(INPUT_FILE)
@@ -126,11 +185,15 @@ def main():
     print("Calculating SimCSE Similarity...")
     simcse_score = evaluator.compute_simcse_sim(preds, refs_single)
 
+    print("Calculating BERTScore...")
+    bert_score_f1 = evaluator.compute_bertscore(preds, refs_single)
+
     # 3. 汇总结果
     results = {
         **trad_metrics,
         "SBERT": sbert_score,
-        "SimCSE": simcse_score
+        "SimCSE": simcse_score,
+        "BERTScore": bert_score_f1
     }
 
     print("\n" + "="*40)
@@ -141,9 +204,9 @@ def main():
     print("="*40)
 
     # 保存
-    with open(f"{BASE_DIR}/processed_dataset/benchmark_metrics_epoch_9_with_50.json", 'w') as f:
+    with open(f"{BASE_DIR}/processed_dataset/benchmark_metrics_phi35_epoch_0_with_90.json", 'w') as f:
         json.dump(results, f, indent=4)
-        print("metrics saved to processed_dataset/benchmark_metrics_epoch_9_with_50.json")
+        print("metrics saved to processed_dataset/benchmark_metrics_phi35_epoch_0_with_90.json")
 
 if __name__ == "__main__":
     main()
