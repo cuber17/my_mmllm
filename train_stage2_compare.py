@@ -15,14 +15,29 @@ from src.llm.projector import RadarProjector
 
 
 MODEL_PRESETS = {
+    "phi3mini": {
+        "local_dir": "Phi-3-mini-4k-instruct",
+        "repo_id": "microsoft/Phi-3-mini-4k-instruct",
+        "lora_targets": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    },
     "phi35": {
         "local_dir": "Phi-3.5-mini-instruct",
         "repo_id": "microsoft/Phi-3.5-mini-instruct",
         "lora_targets": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
     },
+    "phi4mini": {
+        "local_dir": "Phi-4-mini-instruct",
+        "repo_id": "microsoft/Phi-4-mini-instruct",
+        "lora_targets": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    },
     "qwen25_3b": {
         "local_dir": "Qwen2.5-3B-Instruct",
         "repo_id": "Qwen/Qwen2.5-3B-Instruct",
+        "lora_targets": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    },
+    "gemma2_2b": {
+        "local_dir": "gemma-2-2b-it",
+        "repo_id": "google/gemma-2-2b-it",
         "lora_targets": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
     },
     "llama31_8b": {

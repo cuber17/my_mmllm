@@ -1,5 +1,6 @@
 import json
 import torch
+import os
 import numpy as np
 from tqdm import tqdm
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
@@ -152,8 +153,8 @@ class BenchmarkEvaluator:
 def main():
     # --- 配置 ---
     BASE_DIR = "/root/jyz/my_mmLLM"
-    INPUT_FILE = f"{BASE_DIR}/processed_dataset/test_result_phi35_epoch_0_with_90.json"
-    
+    INPUT_FILE = f"{BASE_DIR}/processed_dataset/test_result_gemma2_2b_epoch_9_with_90.json"
+
     print(f"Loading results from {INPUT_FILE}...")
     data = load_data(INPUT_FILE)
     
@@ -204,9 +205,11 @@ def main():
     print("="*40)
 
     # 保存
-    with open(f"{BASE_DIR}/processed_dataset/benchmark_metrics_phi35_epoch_0_with_90.json", 'w') as f:
+    with open(f"{BASE_DIR}/processed_dataset/benchmark_metrics_gemma2_2b_epoch_9_with_90.json", 'w') as f:
         json.dump(results, f, indent=4)
-        print("metrics saved to processed_dataset/benchmark_metrics_phi35_epoch_0_with_90.json")
+        print("metrics saved to processed_dataset/benchmark_metrics_gemma2_2b_epoch_9_with_90.json")
 
 if __name__ == "__main__":
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+    print(f"Using HF_ENDPOINT={os.environ['HF_ENDPOINT']}")
     main()

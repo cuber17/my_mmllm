@@ -57,6 +57,8 @@ class MMExpertInference:
         )
         self.llm = PeftModel.from_pretrained(base_model, llm_adapter_path)
         self.llm.eval()
+        # Ensure KV cache is enabled during generation for speed.
+        self.llm.config.use_cache = True
 
         # C. 加载 Projector (根据当前 LLM hidden size 动态构建)
         print("Loading Projector...")
@@ -107,8 +109,7 @@ class MMExpertInference:
         img_tensor = torch.cat([td, tr, ta], dim=0)
         return img_tensor.unsqueeze(0) # (1, 3, 224, 224)
 
-    def generate(self, sample_id, question="Describe the human activity.", attr_threshold=0.75): # [修改] 默认阈值设为 0.75
-        # [修改] 接受 sample_id
+    def _prepare_sample(self, sample_id, attr_threshold=0.75):
         if sample_id not in self.data_index:
             raise ValueError(f"Sample ID {sample_id} not found in the loaded index.")
 
@@ -117,77 +118,110 @@ class MMExpertInference:
         tr_path = self._resolve_path(item['tr_path'])
         ta_path = self._resolve_path(item['ta_path'])
 
-        # 检查文件是否存在
         if not os.path.exists(td_path):
-            print(f"Warning: File not found at {td_path}, trying simplified path...")
-            # Fallback (针对可能的路径不一致)
             fname = os.path.basename(item['td_path'])
             td_path = os.path.join(self.data_root, "imgs_test", fname)
             tr_path = td_path.replace("td", "tr")
             ta_path = td_path.replace("td", "ta")
 
-        # 1. 预处理数据
-        radar_tensor = self.preprocess_radar(td_path, tr_path, ta_path) # [0, 1] range
-        
-        # 2. 路径二：获取显式属性 (Explicit Attributes)
-        # AttributePredictor 内部需要 Normalize 到 [-1, 1]，它自己会处理 transforms
+        radar_tensor = self.preprocess_radar(td_path, tr_path, ta_path)
+
         with torch.no_grad():
             attr_input = radar_tensor.clone().to(self.device).float()
-            # [修改] 传入置信度阈值
-            attr_res, attr_prompt = self.attr_predictor.predict_attributes(attr_input.squeeze(0), threshold=attr_threshold)
+            _, attr_prompt = self.attr_predictor.predict_attributes(attr_input.squeeze(0), threshold=attr_threshold)
 
-        # 3. 路径一：获取隐式语义 (Implicit Embeddings)
-        radar_tensor = radar_tensor.to(self.device).float() # ViT 输入
+        gt = item.get('texts_ground_truth', ['Unknown'])[0]
+        return radar_tensor, attr_prompt, gt
+
+    def generate_batch(
+        self,
+        sample_ids,
+        question="Describe the human activity.",
+        attr_threshold=0.75,
+        max_new_tokens=64,
+        do_sample=False,
+        temperature=0.6,
+        top_p=0.9,
+        repetition_penalty=1.2,
+    ):
+        batch_radar = []
+        attr_prompts = []
+        gts = []
+
+        for sid in sample_ids:
+            radar_tensor, attr_prompt, gt = self._prepare_sample(sid, attr_threshold=attr_threshold)
+            batch_radar.append(radar_tensor)
+            attr_prompts.append(attr_prompt)
+            gts.append(gt)
+
+        radar_tensor = torch.cat(batch_radar, dim=0).to(self.device).float()
+
         with torch.no_grad():
-            radar_feats = self.radar_encoder.forward_features(radar_tensor) # [1, 197, 768]
-            radar_embeds = self.projector(radar_feats).to(dtype=torch.bfloat16) # [1, 197, 3072]
+            radar_feats = self.radar_encoder.forward_features(radar_tensor)
+            radar_embeds = self.projector(radar_feats).to(dtype=torch.bfloat16)
 
-        # 4. 构造 Prompt
-        # [修改] 优化 Prompt 结构：如果 attr_prompt 不是空的，才加前缀
-        if "Action:" in attr_prompt or "Posture:" in attr_prompt:
-             full_user_prompt = f"Observed attributes with high confidence: {attr_prompt} {question}"
-        else:
-             # 如果所有属性都被过滤掉了，只依靠 Embedding
-             full_user_prompt = f"{question}"
-        
-        conversation = [{"role": "user", "content": full_user_prompt}]
-        text_prompt = self.tokenizer.apply_chat_template(conversation, tokenize=False, add_generation_prompt=True)
-        
-        tokens = self.tokenizer(text_prompt, return_tensors="pt", add_special_tokens=False).to(self.device)
-        
-        # 5. 拼接 Embedding: [Radar, Text]
+        prompts = []
+        for attr_prompt in attr_prompts:
+            if "Action:" in attr_prompt or "Posture:" in attr_prompt:
+                full_user_prompt = f"Observed attributes with high confidence: {attr_prompt} {question}"
+            else:
+                full_user_prompt = f"{question}"
+            conv = [{"role": "user", "content": full_user_prompt}]
+            prompts.append(self.tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=True))
+
+        tokens = self.tokenizer(prompts, return_tensors="pt", add_special_tokens=False, padding=True).to(self.device)
         text_embeds = self.llm.get_input_embeddings()(tokens.input_ids)
-        inputs_embeds = torch.cat([radar_embeds, text_embeds], dim=1)
-        attention_mask = torch.cat([
-            torch.ones(1, radar_embeds.shape[1], device=self.device),
-            tokens.attention_mask
-        ], dim=1)
 
-        # 6. 生成
-        # 设定终止符：Phi-3 有时使用 <|end|> 或 <|endoftext|>
+        inputs_embeds = torch.cat([radar_embeds, text_embeds], dim=1)
+        radar_mask = torch.ones((radar_embeds.shape[0], radar_embeds.shape[1]), device=self.device, dtype=tokens.attention_mask.dtype)
+        attention_mask = torch.cat([radar_mask, tokens.attention_mask], dim=1)
+
         terminators = [
             self.tokenizer.eos_token_id,
             self.tokenizer.convert_tokens_to_ids("<|endoftext|>"),
             self.tokenizer.convert_tokens_to_ids("<|end|>")
         ]
         terminators = [t for t in terminators if isinstance(t, int) and t >= 0]
-        
-        with torch.no_grad():
+
+        with torch.inference_mode():
             generate_ids = self.llm.generate(
                 inputs_embeds=inputs_embeds,
                 attention_mask=attention_mask,
-                max_new_tokens=128,
+                max_new_tokens=max_new_tokens,
                 pad_token_id=self.tokenizer.eos_token_id,
                 eos_token_id=terminators,
-                do_sample=True,
-                temperature=0.6,
-                top_p=0.9,
-                repetition_penalty=1.2,
+                do_sample=do_sample,
+                temperature=temperature,
+                top_p=top_p,
+                repetition_penalty=repetition_penalty,
+                use_cache=True,
             )
 
-        # 解码
-        response = self.tokenizer.decode(generate_ids[0], skip_special_tokens=True)
-        return response, attr_prompt, item.get('texts_ground_truth', ['Unknown'])[0]
+        responses = [self.tokenizer.decode(g, skip_special_tokens=True) for g in generate_ids]
+        return list(zip(responses, attr_prompts, gts))
+
+    def generate(
+        self,
+        sample_id,
+        question="Describe the human activity.",
+        attr_threshold=0.75,
+        max_new_tokens=64,
+        do_sample=False,
+        temperature=0.6,
+        top_p=0.9,
+        repetition_penalty=1.2,
+    ):
+        result = self.generate_batch(
+            [sample_id],
+            question=question,
+            attr_threshold=attr_threshold,
+            max_new_tokens=max_new_tokens,
+            do_sample=do_sample,
+            temperature=temperature,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty,
+        )
+        return result[0]
 
 
 if __name__ == "__main__":

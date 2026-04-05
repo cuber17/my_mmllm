@@ -10,7 +10,10 @@ from inference_demo import MMExpertInference
 LLM_PRESETS = {
     "phi3mini": "Phi-3-mini-4k-instruct",
     "phi35": "Phi-3.5-mini-instruct",
+    "phi4mini": "Phi-4-mini-instruct",
     "qwen25": "Qwen2.5-3B-Instruct",
+    "qwen25_3b": "Qwen2.5-3B-Instruct",
+    "gemma2_2b": "gemma-2-2b-it",
 }
 
 def calculate_metrics(predictions, ground_truths):
@@ -44,8 +47,15 @@ def parse_args():
     parser.add_argument("--data_root", type=str, default="")
     parser.add_argument("--attr_exp_id", type=str, default="attributes_20260131_145653")
     parser.add_argument("--radar_ckpt", type=str, default="")
-    parser.add_argument("--confidence_threshold", type=float, default=0.50)
+    parser.add_argument("--confidence_threshold", type=float, default=0.90)
     parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--max_new_tokens", type=int, default=48)
+    parser.add_argument("--do_sample", action="store_true", help="Enable sampling decoding (slower, more diverse)")
+    parser.add_argument("--temperature", type=float, default=0.6)
+    parser.add_argument("--top_p", type=float, default=0.9)
+    parser.add_argument("--repetition_penalty", type=float, default=1.2)
+    parser.add_argument("--max_samples", type=int, default=0, help="0 means evaluate all samples")
+    parser.add_argument("--batch_size", type=int, default=4, help="Micro-batch size for inference")
     return parser.parse_args()
 
 def main():
@@ -103,6 +113,9 @@ def main():
     print(f"Projector    : {PROJ_CKPT}")
     print(f"Output JSON  : {OUTPUT_JSON}")
     print(f"Device       : {eval_device}")
+    print(f"Max New Tok  : {args.max_new_tokens}")
+    print(f"Do Sample    : {args.do_sample}")
+    print(f"Batch Size   : {args.batch_size}")
     print("=========================")
 
     # --- 2. 初始化模型 ---
@@ -126,6 +139,10 @@ def main():
     # --- 3. 加载测试数据列表 ---
     with open(TEST_JSON, 'r') as f:
         data_list = json.load(f)
+
+    if args.max_samples and args.max_samples > 0:
+        data_list = data_list[:args.max_samples]
+        print(f"Using first {len(data_list)} samples for evaluation.")
     
     # [新增] 定义置信度阈值
     CONFIDENCE_THRESHOLD = args.confidence_threshold
@@ -138,30 +155,38 @@ def main():
     all_gts = []
 
     # --- 4. 批量推理 ---
-    for item in tqdm(data_list, desc="Evaluating"):
-        sample_id = item['id']
-        
-        # 复制原数据，避免修改读取的缓存
-        result_item = item.copy()
-        
-        try:
-            # [修改] 调用 generate 时传入阈值
-            response, attr_prompt, _ = expert.generate(sample_id, attr_threshold=CONFIDENCE_THRESHOLD)
-            
-            # --- 新增字段 ---
-            result_item['predicted_label'] = attr_prompt
-            result_item['predicted_caption'] = response
-            
-            # 收集用于计算指标
-            all_preds.append(response)
-            all_gts.append(item['texts_ground_truth']) 
-            
-        except Exception as e:
-            print(f"Error inferencing {sample_id}: {e}")
-            result_item['predicted_label'] = "Error"
-            result_item['predicted_caption'] = "Error generating caption."
+    batch_size = max(1, int(args.batch_size))
+    for start in tqdm(range(0, len(data_list), batch_size), desc="Evaluating"):
+        chunk = data_list[start:start + batch_size]
+        sample_ids = [it['id'] for it in chunk]
 
-        final_results.append(result_item)
+        try:
+            outputs = expert.generate_batch(
+                sample_ids,
+                attr_threshold=CONFIDENCE_THRESHOLD,
+                max_new_tokens=args.max_new_tokens,
+                do_sample=args.do_sample,
+                temperature=args.temperature,
+                top_p=args.top_p,
+                repetition_penalty=args.repetition_penalty,
+            )
+
+            for item, out in zip(chunk, outputs):
+                response, attr_prompt, _ = out
+                result_item = item.copy()
+                result_item['predicted_label'] = attr_prompt
+                result_item['predicted_caption'] = response
+                all_preds.append(response)
+                all_gts.append(item['texts_ground_truth'])
+                final_results.append(result_item)
+
+        except Exception as e:
+            print(f"Error inferencing batch {start}:{start + len(chunk)}: {e}")
+            for item in chunk:
+                result_item = item.copy()
+                result_item['predicted_label'] = "Error"
+                result_item['predicted_caption'] = "Error generating caption."
+                final_results.append(result_item)
 
     # --- 5. 计算总体指标 ---
     if len(all_preds) > 0:

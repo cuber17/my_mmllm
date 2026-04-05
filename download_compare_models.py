@@ -3,13 +3,25 @@ import os
 
 
 MODEL_ZOO = {
+    "phi3mini": {
+        "repo_id": "microsoft/Phi-3-mini-4k-instruct",
+        "local_dir": "Phi-3-mini-4k-instruct",
+    },
     "phi35": {
         "repo_id": "microsoft/Phi-3.5-mini-instruct",
         "local_dir": "Phi-3.5-mini-instruct",
     },
+    "phi4mini": {
+        "repo_id": "microsoft/Phi-4-mini-instruct",
+        "local_dir": "Phi-4-mini-instruct",
+    },
     "qwen25_3b": {
         "repo_id": "Qwen/Qwen2.5-3B-Instruct",
         "local_dir": "Qwen2.5-3B-Instruct",
+    },
+    "gemma2_2b": {
+        "repo_id": "google/gemma-2-2b-it",
+        "local_dir": "gemma-2-2b-it",
     },
     "llama31_8b": {
         "repo_id": "meta-llama/Llama-3.1-8B-Instruct",
@@ -45,7 +57,7 @@ def main() -> None:
     parser.add_argument(
         "--models",
         nargs="+",
-        default=["phi35", "qwen25_3b", "llama31_8b"],
+        default=["phi3mini", "phi35", "qwen25_3b", "phi4mini", "gemma2_2b", "llama31_8b"],
         choices=list(MODEL_ZOO.keys()),
         help="Model keys to download.",
     )
@@ -100,7 +112,9 @@ def main() -> None:
             raise
 
     print("\nAll requested downloads finished.")
-    print("Note: Llama-3.1-8B-Instruct requires accepted Meta license token on Hugging Face.")
+    print("Notes:")
+    print("- Llama-3.1-8B-Instruct requires accepted Meta license token on Hugging Face.")
+    print("- Gemma-2-2B-it may require accepted Google Gemma license token on Hugging Face.")
 
 
 if __name__ == "__main__":

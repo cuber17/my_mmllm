@@ -97,3 +97,15 @@ python evaluate_pipeline.py   --llm_key qwen25   --llm_base_path /root/jyz/my_mm
 ```bash
 python evaluate_pipeline.py --llm_key phi35  --llm_base_path /root/jyz/my_mmLLM/huggingface/Phi-3.5-mini-instruct  --lora_path logs/stage2_phi35_20260403_031610/epoch_9 --output_json /root/jyz/my_mmLLM/processed_dataset/test_result_phi35_epoch_9_with_90.json  --confidence_threshold 0.9
 ```
+
+## Phi-4-mini
+- 批量评测命令
+```bash
+python evaluate_pipeline.py --llm_key phi4mini --lora_path /root/jyz/my_mmLLM/logs/stage2_phi4mini_20260404_065504/epoch_6 --output_json /root/jyz/my_mmLLM/processed_dataset/test_result_phi4mini_epoch_6_with_90.json --confidence_threshold 0.9
+```
+
+## Gemma-2-1.5B
+- 批量评测命令
+```bash
+python evaluate_pipeline.py --llm_key gemma2_2b --lora_path /root/jyz/my_mmLLM/logs/stage2_gemma2_2b_20260404_074536/epoch_9 --output_json /root/jyz/my_mmLLM/processed_dataset/test_result_gemma2_2b_epoch_9_with_90.json --confidence_threshold 0.9
+```
