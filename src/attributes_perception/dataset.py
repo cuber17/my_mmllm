@@ -15,7 +15,7 @@ class MMWaveAttributeDataset(Dataset):
         self.transform = transform
         
         # 定义标准标签空间 (白名单)
-        self.valid_labels = {
+        self.standard_valid_labels = {
             'action_category': ['locomotion', 'stationary_activity', 'gesture', 'exercise', 'transition'],
             'posture': ['upright', 'sitting', 'crouching', 'lying', 'bending'],
             'intensity': ['static', 'slow', 'normal', 'vigorous'],
@@ -24,17 +24,51 @@ class MMWaveAttributeDataset(Dataset):
         }
         
         if label_maps is None:
-            self.label_maps = self._build_standard_label_maps()
+            self.valid_labels = self._resolve_valid_labels_from_data()
+            self.label_maps = self._build_label_maps(self.valid_labels)
         else:
             self.label_maps = label_maps
+            self.valid_labels = {k: list(v.keys()) for k, v in label_maps.items()}
 
-    def _build_standard_label_maps(self):
-        return {k: {label: idx for idx, label in enumerate(v)} for k, v in self.valid_labels.items()}
+    def _build_label_maps(self, valid_labels):
+        return {k: {label: idx for idx, label in enumerate(v)} for k, v in valid_labels.items()}
+
+    def _normalize_label(self, raw_label):
+        if not isinstance(raw_label, str):
+            return ""
+        return raw_label.lower().strip()
+
+    def _is_label_covered(self, raw_label, valid_set):
+        if raw_label in valid_set:
+            return True
+        return any(valid in raw_label for valid in valid_set)
+
+    def _resolve_valid_labels_from_data(self):
+        resolved = {}
+        for key, default_labels in self.standard_valid_labels.items():
+            raw_labels = []
+            seen = set()
+            use_inferred_space = False
+
+            for item in self.data:
+                raw_label = self._normalize_label(item.get('labels', {}).get(key, ""))
+                if not raw_label:
+                    continue
+
+                if raw_label not in seen:
+                    seen.add(raw_label)
+                    raw_labels.append(raw_label)
+
+                if not self._is_label_covered(raw_label, default_labels):
+                    use_inferred_space = True
+
+            resolved[key] = raw_labels if use_inferred_space else list(default_labels)
+
+        return resolved
 
     def _clean_label(self, key, raw_label):
         valid_set = self.valid_labels[key]
-        if not isinstance(raw_label, str): raw_label = ""
-        raw_label = raw_label.lower().strip()
+        raw_label = self._normalize_label(raw_label)
         
         if raw_label in valid_set:
             return raw_label

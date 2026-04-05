@@ -82,9 +82,9 @@
             "the person is riding the motorcycle."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -1215,7 +1215,7 @@
             "a man picks up something in front of him, moving it from his left to his right."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "bending",
             "intensity": "normal",
             "active_part": "upper_body",
@@ -1595,7 +1595,7 @@
         "labels": {
             "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -1629,7 +1629,7 @@
             "a person bends their arms at the elbow and then lowers them"
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "upper_body",
@@ -2063,7 +2063,7 @@
         "labels": {
             "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -2583,9 +2583,9 @@
             "a standing persons raises their arms and crosses them."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -2601,7 +2601,7 @@
             "a person stands still and then moved shoulders back as if they were pushed."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "upper_body",
@@ -3447,7 +3447,7 @@
             "a person stretches their hands above their head."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "upper_body",
@@ -3915,9 +3915,9 @@
             "person is doing a t pose."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -4959,7 +4959,7 @@
             "a person stands straight and bends slightly towards right."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "bending",
             "intensity": "slow",
             "active_part": "upper_body",
@@ -5230,7 +5230,7 @@
         ],
         "labels": {
             "action_category": "transition",
-            "posture": "sitting",
+            "posture": "low_posture",
             "intensity": "slow",
             "active_part": "full_body",
             "trajectory": "in_place"
@@ -5391,9 +5391,9 @@
             "figure appears to be standing still"
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -5535,7 +5535,7 @@
             "a person does a small body shift while standing."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "full_body",
@@ -5717,7 +5717,7 @@
         "labels": {
             "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -7279,7 +7279,7 @@
             "person is doing a golf put"
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "bending",
             "intensity": "slow",
             "active_part": "upper_body",
@@ -7585,7 +7585,7 @@
             "a man stands and puts his hands together near the chest, starts to rub them and then lowers down his hands."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "upper_body",
@@ -7837,7 +7837,7 @@
             "a person lifts something heavy up and places it to the right."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "bending",
             "intensity": "normal",
             "active_part": "upper_body",
@@ -8575,9 +8575,9 @@
             "a person crosses their arms."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -8647,7 +8647,7 @@
             "a person standing for a long time may shift his weight from one foot to another."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "lower_body",
@@ -9205,7 +9205,7 @@
             "a person bends at their hips to the right side."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "lower_body",
@@ -9817,7 +9817,7 @@
             "a person side steps once to the right."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "normal",
             "active_part": "upper_body",
@@ -9835,7 +9835,7 @@
             "a person checks their watch."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "upper_body",
@@ -9872,7 +9872,7 @@
         ],
         "labels": {
             "action_category": "transition",
-            "posture": "sitting",
+            "posture": "low_posture",
             "intensity": "normal",
             "active_part": "full_body",
             "trajectory": "in_place"
@@ -11688,8 +11688,8 @@
             "a man lifts and bends his left leg, then his right leg."
         ],
         "labels": {
-            "action_category": "stationary_activity",
-            "posture": "sitting",
+            "action_category": "gesture",
+            "posture": "low_posture",
             "intensity": "slow",
             "active_part": "lower_body",
             "trajectory": "in_place"
@@ -12606,7 +12606,7 @@
             "a person stretches arms up together above head."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "upper_body",
@@ -12892,7 +12892,7 @@
             "a person stretches their hands above their head."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "upper_body",
@@ -12964,9 +12964,9 @@
             "a person who is standing with his hands down by his sides crosses his arms, then drops his arms to his sides."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -13037,7 +13037,7 @@
         ],
         "labels": {
             "action_category": "transition",
-            "posture": "sitting",
+            "posture": "low_posture",
             "intensity": "normal",
             "active_part": "lower_body",
             "trajectory": "in_place"
@@ -13757,7 +13757,7 @@
         ],
         "labels": {
             "action_category": "transition",
-            "posture": "sitting",
+            "posture": "low_posture",
             "intensity": "normal",
             "active_part": "full_body",
             "trajectory": "backwards"
@@ -13937,7 +13937,7 @@
         ],
         "labels": {
             "action_category": "transition",
-            "posture": "lying",
+            "posture": "low_posture",
             "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
@@ -14388,7 +14388,7 @@
         "labels": {
             "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -14423,7 +14423,7 @@
         ],
         "labels": {
             "action_category": "gesture",
-            "posture": "sitting",
+            "posture": "low_posture",
             "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
@@ -14729,7 +14729,7 @@
         ],
         "labels": {
             "action_category": "transition",
-            "posture": "sitting",
+            "posture": "low_posture",
             "intensity": "normal",
             "active_part": "full_body",
             "trajectory": "in_place"
@@ -14746,9 +14746,9 @@
             "a person crosses his arms together in the center"
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -14764,7 +14764,7 @@
             "a person standing for a long time may shift his weight from one foot to another."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
             "intensity": "slow",
             "active_part": "lower_body",
@@ -14873,7 +14873,7 @@
         ],
         "labels": {
             "action_category": "transition",
-            "posture": "sitting",
+            "posture": "low_posture",
             "intensity": "normal",
             "active_part": "full_body",
             "trajectory": "in_place"
@@ -15231,7 +15231,7 @@
             "a man picks up something in front of him, moving it from his left to his right."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "bending",
             "intensity": "normal",
             "active_part": "upper_body",
@@ -15393,9 +15393,9 @@
             "a person scratches the ground with their right leg."
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "lower_body",
             "trajectory": "in_place"
         }
@@ -15431,7 +15431,7 @@
         "labels": {
             "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -15681,9 +15681,9 @@
             "a person is t-posing (n/a)"
         ],
         "labels": {
-            "action_category": "stationary_activity",
+            "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }
@@ -17302,7 +17302,7 @@
         ],
         "labels": {
             "action_category": "transition",
-            "posture": "sitting",
+            "posture": "low_posture",
             "intensity": "normal",
             "active_part": "full_body",
             "trajectory": "backwards"
@@ -17392,7 +17392,7 @@
         ],
         "labels": {
             "action_category": "transition",
-            "posture": "sitting",
+            "posture": "low_posture",
             "intensity": "normal",
             "active_part": "full_body",
             "trajectory": "backwards"
@@ -17969,7 +17969,7 @@
         "labels": {
             "action_category": "gesture",
             "posture": "upright",
-            "intensity": "static",
+            "intensity": "slow",
             "active_part": "upper_body",
             "trajectory": "in_place"
         }

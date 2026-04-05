@@ -45,7 +45,7 @@ def parse_args():
     parser.add_argument("--output_json", type=str, default="")
     parser.add_argument("--test_json", type=str, default="")
     parser.add_argument("--data_root", type=str, default="")
-    parser.add_argument("--attr_exp_id", type=str, default="attributes_20260131_145653")
+    parser.add_argument("--attr_exp_id", type=str, default="attributes_20260405_052021")
     parser.add_argument("--radar_ckpt", type=str, default="")
     parser.add_argument("--confidence_threshold", type=float, default=0.90)
     parser.add_argument("--device", type=str, default="cuda")

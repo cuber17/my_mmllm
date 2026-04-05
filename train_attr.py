@@ -9,10 +9,28 @@ import os
 import json
 import logging
 import datetime
+from pathlib import Path
 from tqdm import tqdm
 
 def get_timestamp():
     return datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def resolve_dataset_root(project_root: Path) -> Path:
+    candidates = [
+        project_root / 'processed_dataset_rebalanced',
+        project_root / 'processed_dataset',
+    ]
+
+    for root in candidates:
+        train_json = root / 'train.json'
+        has_images = (root / 'imgs').exists() or (root / 'imgs_test').exists()
+        if train_json.exists() and has_images:
+            return root
+
+    raise FileNotFoundError(
+        "No valid dataset root found. Need train.json and imgs/imgs_test under processed_dataset_rebalanced or processed_dataset."
+    )
 
 def train():
     # --- 1. 配置与环境 ---
@@ -33,7 +51,8 @@ def train():
     )
     logger = logging.getLogger(__name__)
     
-    ROOT_DIR = '/root/jyz/my_mmLLM/processed_dataset/'
+    project_root = Path('/root/jyz/my_mmLLM')
+    ROOT_DIR = str(resolve_dataset_root(project_root))
     JSON_FILE = os.path.join(ROOT_DIR, 'train.json')
     
     # 超参数
@@ -47,6 +66,7 @@ def train():
     
     logger.info(f"Start training on {DEVICE}")
     logger.info(f"Log directory: {LOG_DIR}")
+    logger.info(f"Dataset root: {ROOT_DIR}")
     
     # --- 2. 数据准备 ---
     # 定义 Transform: 只做 Normalize，因为 Dataset 内部已经做过 MinMax 和 Resize(224)
@@ -55,7 +75,14 @@ def train():
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
     
-    dataset = MMWaveAttributeDataset(JSON_FILE, ROOT_DIR, transform=transform)
+    label_maps_path = os.path.join(ROOT_DIR, 'label_maps.json')
+    if os.path.exists(label_maps_path):
+        with open(label_maps_path, 'r') as f:
+            label_maps = json.load(f)
+    else:
+        label_maps = None
+
+    dataset = MMWaveAttributeDataset(JSON_FILE, ROOT_DIR, transform=transform, label_maps=label_maps)
     
     dataloader = DataLoader(
         dataset, 
@@ -101,7 +128,7 @@ def train():
             with torch.cuda.amp.autocast():
                 preds = model(imgs)
                 
-                loss = 0
+                loss = torch.tensor(0.0, device=DEVICE)
                 loss_detail = {}
                 for k in preds.keys():
                     l = criterion(preds[k], target_labels[k])

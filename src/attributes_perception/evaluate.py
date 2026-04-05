@@ -6,11 +6,78 @@ from dataset import MMWaveAttributeDataset # type: ignore
 from model import MultiHeadAttributeClassifier # type: ignore
 import os
 import json
+import numpy as np
+import matplotlib.pyplot as plt
 from tqdm import tqdm
+
+
+def _get_class_names_for_task(task_name, task_map, num_classes):
+    if isinstance(task_map, dict):
+        # 优先使用 id->label 的稳定顺序
+        if len(task_map) > 0 and all(isinstance(v, int) for v in task_map.values()):
+            sorted_items = sorted(task_map.items(), key=lambda x: x[1])
+            names = [name for name, _ in sorted_items]
+        else:
+            names = [str(k) for k in task_map.keys()]
+    elif isinstance(task_map, list):
+        names = [str(x) for x in task_map]
+    else:
+        names = []
+
+    if len(names) != num_classes:
+        names = [f"Class_{i}" for i in range(num_classes)]
+
+    return names
+
+
+def _save_confusion_matrix_image(cm, class_names, task_name, save_path):
+    cm_np = cm.cpu().numpy()
+    row_sums = cm_np.sum(axis=1, keepdims=True)
+    cm_norm = np.divide(
+        cm_np,
+        row_sums,
+        out=np.zeros_like(cm_np, dtype=np.float64),
+        where=row_sums != 0,
+    )
+
+    num_classes = len(class_names)
+    fig_size = min(max(8, num_classes * 0.7), 24)
+    fig, ax = plt.subplots(figsize=(fig_size, fig_size))
+    im = ax.imshow(cm_norm, interpolation='nearest', cmap='Blues', vmin=0.0, vmax=1.0)
+
+    ax.set_title(f"Confusion Matrix - {task_name}")
+    ax.set_xlabel("Predicted label")
+    ax.set_ylabel("True label")
+    ax.set_xticks(np.arange(num_classes))
+    ax.set_yticks(np.arange(num_classes))
+    ax.set_xticklabels(class_names, rotation=45, ha='right')
+    ax.set_yticklabels(class_names)
+
+    # 类别太多时只画热力图，避免文字重叠
+    if num_classes <= 15:
+        threshold = cm_norm.max() / 2.0 if cm_norm.size > 0 else 0.0
+        for i in range(num_classes):
+            for j in range(num_classes):
+                ax.text(
+                    j,
+                    i,
+                    f"{cm_np[i, j]}\n{cm_norm[i, j] * 100:.1f}%",
+                    ha='center',
+                    va='center',
+                    color='white' if cm_norm[i, j] > threshold else 'black',
+                    fontsize=8,
+                )
+
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label('Row-normalized ratio')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=220)
+    plt.close(fig)
+
 
 def evaluate():
     # --- 1. 配置 ---
-    EXPERIMENT_ID = "attributes_20260131_145653" # 请确认这是你要评测的权重文件夹
+    EXPERIMENT_ID = "attributes_20260405_052021" # 请确认这是你要评测的权重文件夹
     PROJECT_ROOT = '/root/jyz/my_mmLLM'
     
     # [FIX] 数据集的根目录应该是 processed_dataset
@@ -68,6 +135,10 @@ def evaluate():
     
     # 5. 开始评估
     correct_counts = {k: 0 for k in output_dims.keys()}
+    confusion_matrices = {
+        k: torch.zeros((output_dims[k], output_dims[k]), dtype=torch.int64)
+        for k in output_dims.keys()
+    }
     total_samples = 0
     
     print(f"Evaluating on {len(dataset)} samples...")
@@ -82,7 +153,14 @@ def evaluate():
             
             for k in preds.keys():
                 _, predicted = torch.max(preds[k], 1)
-                correct_counts[k] += (predicted == target_labels[k]).sum().item()
+                targets = target_labels[k]
+                correct_counts[k] += (predicted == targets).sum().item()
+
+                # 将 (true, pred) 对映射到混淆矩阵计数
+                num_classes = output_dims[k]
+                encoded = (targets * num_classes + predicted).detach().cpu()
+                batch_cm = torch.bincount(encoded, minlength=num_classes * num_classes)
+                confusion_matrices[k] += batch_cm.reshape(num_classes, num_classes)
     
     # 6. 打印结果
     print("\n" + "="*40)
@@ -101,6 +179,21 @@ def evaluate():
         print("-" * 40)
         print(f"Average Accuracy    : {(avg_acc/len(output_dims))*100:.2f}%")
     print("="*40)
+
+    # 7. 导出混淆矩阵图片
+    cm_dir = os.path.join(EXP_DIR, "confusion_matrices")
+    os.makedirs(cm_dir, exist_ok=True)
+
+    print("\nSaving confusion matrix images...")
+    for task_name, cm in confusion_matrices.items():
+        class_names = _get_class_names_for_task(
+            task_name,
+            label_maps.get(task_name, {}),
+            output_dims[task_name],
+        )
+        out_path = os.path.join(cm_dir, f"{task_name}_confusion_matrix.png")
+        _save_confusion_matrix_image(cm, class_names, task_name, out_path)
+        print(f"- {task_name}: {out_path}")
 
 if __name__ == "__main__":
     evaluate()
