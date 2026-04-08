@@ -162,7 +162,8 @@ class MMExpertInference:
 
         prompts = []
         for attr_prompt in attr_prompts:
-            if "Action:" in attr_prompt or "Posture:" in attr_prompt:
+            if "Action:" in attr_prompt or "Posture:" in attr_prompt or "Intensity:" in attr_prompt \
+               or "Active Part:" in attr_prompt or "Trajectory:" in attr_prompt:
                 full_user_prompt = f"Observed attributes with high confidence: {attr_prompt} {question}"
             else:
                 full_user_prompt = f"{question}"
@@ -172,6 +173,8 @@ class MMExpertInference:
         tokens = self.tokenizer(prompts, return_tensors="pt", add_special_tokens=False, padding=True).to(self.device)
         text_embeds = self.llm.get_input_embeddings()(tokens.input_ids)
 
+        # 消融实验：仅使用属性提示词，不使用雷达特征
+        # inputs_embeds = text_embeds
         inputs_embeds = torch.cat([radar_embeds, text_embeds], dim=1)
         radar_mask = torch.ones((radar_embeds.shape[0], radar_embeds.shape[1]), device=self.device, dtype=tokens.attention_mask.dtype)
         attention_mask = torch.cat([radar_mask, tokens.attention_mask], dim=1)

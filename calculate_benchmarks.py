@@ -1,6 +1,7 @@
 import json
 import torch
 import os
+import argparse
 import numpy as np
 from tqdm import tqdm
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
@@ -18,6 +19,35 @@ except ImportError:
 def load_data(json_path):
     with open(json_path, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Calculate benchmark metrics for generated captions.")
+    parser.add_argument(
+        "--base-dir",
+        type=str,
+        default="/root/jyz/my_mmLLM",
+        help="Project root directory.",
+    )
+    parser.add_argument(
+        "--input-file",
+        type=str,
+        default="",
+        help="Path to result json file (contains predicted_caption and texts_ground_truth).",
+    )
+    parser.add_argument(
+        "--output-file",
+        type=str,
+        default="",
+        help="Path to save benchmark metrics json.",
+    )
+    parser.add_argument(
+        "--hf-endpoint",
+        type=str,
+        default="https://hf-mirror.com",
+        help="Hugging Face endpoint mirror.",
+    )
+    return parser.parse_args()
 
 
 def simple_tokenize(text):
@@ -150,13 +180,28 @@ class BenchmarkEvaluator:
             "METEOR": np.mean(meteor_scores)
         }
 
-def main():
-    # --- 配置 ---
-    BASE_DIR = "/root/jyz/my_mmLLM"
-    INPUT_FILE = f"{BASE_DIR}/processed_dataset/test_result_gemma2_2b_epoch_9_with_90.json"
+def build_default_output_path(input_file):
+    input_dir = os.path.dirname(input_file)
+    input_name = os.path.basename(input_file)
+    if input_name.startswith("test_result_"):
+        suffix = input_name[len("test_result_"):]
+    else:
+        suffix = input_name
+    return os.path.join(input_dir, f"benchmark_metrics_{suffix}")
 
-    print(f"Loading results from {INPUT_FILE}...")
-    data = load_data(INPUT_FILE)
+
+def main():
+    args = parse_args()
+
+    base_dir = args.base_dir
+    input_file = args.input_file if args.input_file else f"{base_dir}/processed_dataset/test_result_phi4mini_epoch_0_with_98.json"
+    output_file = args.output_file if args.output_file else build_default_output_path(input_file)
+
+    os.environ["HF_ENDPOINT"] = args.hf_endpoint
+    print(f"Using HF_ENDPOINT={os.environ['HF_ENDPOINT']}")
+
+    print(f"Loading results from {input_file}...")
+    data = load_data(input_file)
     
     # 提取 Prediction 和 Ground Truth
     # text_ground_truth 是 list of strings
@@ -205,9 +250,9 @@ def main():
     print("="*40)
 
     # 保存
-    with open(f"{BASE_DIR}/processed_dataset/benchmark_metrics_gemma2_2b_epoch_9_with_90.json", 'w') as f:
+    with open(output_file, 'w') as f:
         json.dump(results, f, indent=4)
-        print("metrics saved to processed_dataset/benchmark_metrics_gemma2_2b_epoch_9_with_90.json")
+        print(f"metrics saved to {output_file}")
 
 if __name__ == "__main__":
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"

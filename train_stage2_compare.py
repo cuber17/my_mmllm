@@ -54,7 +54,7 @@ def build_args() -> argparse.Namespace:
 
     parser.add_argument("--project_root", type=str, default="/root/jyz/my_mmLLM")
     parser.add_argument("--model_root", type=str, default="./huggingface")
-    parser.add_argument("--radar_encoder_path", type=str, default="logs/clip_20260120_224659/radar_encoder_only.pth")
+    parser.add_argument("--radar_encoder_path", type=str, default="logs/clip_20260406_085718/radar_encoder_only.pth")
 
     parser.add_argument("--train_json", type=str, default="/root/jyz/my_mmLLM/processed_dataset/train.json")
     parser.add_argument("--data_root", type=str, default="/root/jyz/my_mmLLM/processed_dataset/")

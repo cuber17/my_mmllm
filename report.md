@@ -101,7 +101,7 @@ python evaluate_pipeline.py --llm_key phi35  --llm_base_path /root/jyz/my_mmLLM/
 ## Phi-4-mini
 - 批量评测命令
 ```bash
-python evaluate_pipeline.py --llm_key phi4mini --lora_path /root/jyz/my_mmLLM/logs/stage2_phi4mini_20260404_065504/epoch_6 --output_json /root/jyz/my_mmLLM/processed_dataset/test_result_phi4mini_epoch_6_with_90.json --confidence_threshold 0.9
+python evaluate_pipeline.py --llm_key phi4mini --lora_path /root/jyz/my_mmLLM/logs/stage2_phi4mini_20260407_025302/epoch_6 --output_json /root/jyz/my_mmLLM/processed_dataset/test_result_phi4mini_epoch_6_with_90.json --confidence_threshold 0.9
 ```
 
 ## Gemma-2-1.5B

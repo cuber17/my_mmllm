@@ -13,8 +13,12 @@ except ImportError:
     from .model import MultiHeadAttributeClassifier
 
 class AttributePredictor:
-    def __init__(self, checkpoint_path, label_maps_path, device='cuda'):
+    def __init__(self, checkpoint_path, label_maps_path, device='cuda', temperature=1.3):
         self.device = torch.device(device)
+        # Temperature scaling: T > 1 flattens probabilities and reduces over-confidence.
+        self.temperature = float(temperature)
+        if self.temperature <= 0:
+            raise ValueError(f"temperature must be > 0, got {self.temperature}")
         
         if not os.path.exists(checkpoint_path):
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
@@ -51,6 +55,8 @@ class AttributePredictor:
         输入: Tensor (3, H, W) 或 (1, 3, H, W)
         输出: 结构化字典 + 文本 Prompt
         Trick: 只有当某属性的预测置信度 > threshold 时，才将其加入 prompt
+        置信度计算使用 temperature-scaled softmax:
+            p = softmax(logits / T), T > 1 时分布更均匀
         """
         # 确保是 Tensor
         if not isinstance(img_tensor, torch.Tensor):
@@ -83,8 +89,9 @@ class AttributePredictor:
         for k in order:
             if k in preds:
                 logits = preds[k] # (Batch, Num_Classes)
-                # [新增] 计算概率分布
-                probs = F.softmax(logits, dim=1)
+                # Temperature scaling: larger T -> flatter probability distribution.
+                scaled_logits = logits / self.temperature
+                probs = F.softmax(scaled_logits, dim=1)
                 max_prob, idx = torch.max(probs, dim=1)
                 
                 confidence = max_prob.item()

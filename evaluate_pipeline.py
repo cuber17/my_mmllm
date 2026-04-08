@@ -45,17 +45,17 @@ def parse_args():
     parser.add_argument("--output_json", type=str, default="")
     parser.add_argument("--test_json", type=str, default="")
     parser.add_argument("--data_root", type=str, default="")
-    parser.add_argument("--attr_exp_id", type=str, default="attributes_20260405_052021")
+    parser.add_argument("--attr_exp_id", type=str, default="attributes_20260406_090119")
     parser.add_argument("--radar_ckpt", type=str, default="")
     parser.add_argument("--confidence_threshold", type=float, default=0.90)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--max_new_tokens", type=int, default=48)
+    parser.add_argument("--max_new_tokens", type=int, default=128)
     parser.add_argument("--do_sample", action="store_true", help="Enable sampling decoding (slower, more diverse)")
     parser.add_argument("--temperature", type=float, default=0.6)
     parser.add_argument("--top_p", type=float, default=0.9)
     parser.add_argument("--repetition_penalty", type=float, default=1.2)
     parser.add_argument("--max_samples", type=int, default=0, help="0 means evaluate all samples")
-    parser.add_argument("--batch_size", type=int, default=4, help="Micro-batch size for inference")
+    parser.add_argument("--batch_size", type=int, default=1, help="Micro-batch size for inference")
     return parser.parse_args()
 
 def main():
@@ -75,7 +75,7 @@ def main():
     ATTR_MAP = f"{BASE_DIR}/logs/{ATTR_EXP_ID}/label_maps.json"
     
     # Stage 1 Encoder
-    RADAR_CKPT = args.radar_ckpt if args.radar_ckpt else f"{BASE_DIR}/logs/clip_20260120_224659/radar_encoder_only.pth"
+    RADAR_CKPT = args.radar_ckpt if args.radar_ckpt else f"{BASE_DIR}/logs/clip_20260406_085718/radar_encoder_only.pth"
     
     # Stage 2 Projector & LoRA: 默认需要你通过 --lora_path 指定当前实验目录
     if args.lora_path:

@@ -77,7 +77,7 @@ def _save_confusion_matrix_image(cm, class_names, task_name, save_path):
 
 def evaluate():
     # --- 1. 配置 ---
-    EXPERIMENT_ID = "attributes_20260405_052021" # 请确认这是你要评测的权重文件夹
+    EXPERIMENT_ID = "attributes_20260406_090119" # 请确认这是你要评测的权重文件夹
     PROJECT_ROOT = '/root/jyz/my_mmLLM'
     
     # [FIX] 数据集的根目录应该是 processed_dataset
