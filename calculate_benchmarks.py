@@ -194,7 +194,7 @@ def main():
     args = parse_args()
 
     base_dir = args.base_dir
-    input_file = args.input_file if args.input_file else f"{base_dir}/processed_dataset/test_result_phi4mini_epoch_0_with_98.json"
+    input_file = args.input_file if args.input_file else f"{base_dir}/processed_dataset/test_result_phi4mini_epoch_6_with_90.json"
     output_file = args.output_file if args.output_file else build_default_output_path(input_file)
 
     os.environ["HF_ENDPOINT"] = args.hf_endpoint

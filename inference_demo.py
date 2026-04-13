@@ -164,7 +164,7 @@ class MMExpertInference:
         for attr_prompt in attr_prompts:
             if "Action:" in attr_prompt or "Posture:" in attr_prompt or "Intensity:" in attr_prompt \
                or "Active Part:" in attr_prompt or "Trajectory:" in attr_prompt:
-                full_user_prompt = f"Observed attributes with high confidence: {attr_prompt} {question}"
+                full_user_prompt = f" {attr_prompt} {question}"
             else:
                 full_user_prompt = f"{question}"
             conv = [{"role": "user", "content": full_user_prompt}]

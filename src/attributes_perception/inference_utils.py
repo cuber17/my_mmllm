@@ -13,7 +13,7 @@ except ImportError:
     from .model import MultiHeadAttributeClassifier
 
 class AttributePredictor:
-    def __init__(self, checkpoint_path, label_maps_path, device='cuda', temperature=1.3):
+    def __init__(self, checkpoint_path, label_maps_path, device='cuda', temperature=5.5):
         self.device = torch.device(device)
         # Temperature scaling: T > 1 flattens probabilities and reduces over-confidence.
         self.temperature = float(temperature)
@@ -76,11 +76,11 @@ class AttributePredictor:
         
         # 定义模板
         templates = {
-            'action_category': "Action: {}",
-            'posture': "Posture: {}",
-            'intensity': "Intensity: {}",
-            'active_part': "Active Part: {}",
-            'trajectory': "Trajectory: {}"
+            'action_category': "Action category is {}",
+            'posture': "Posture is {}",
+            'intensity': "Intensity is {}",
+            'active_part': "Main active part is {}",
+            'trajectory': "Motion trajectory is {}"
         }
         
         # 按照特定顺序生成描述
@@ -115,10 +115,10 @@ class AttributePredictor:
             
         # 拼接 Prompt
         if len(prompt_parts) > 0:
-            full_text_prompt = ", ".join(prompt_parts) + "."
+            full_text_prompt = ". ".join(prompt_parts) + "."
         else:
             # 如果依然所有属性都低于阈值，返回一个通用的空提示，避免空字符串
-            full_text_prompt = "activity output." 
+            full_text_prompt = "" 
         
         return results, full_text_prompt
 

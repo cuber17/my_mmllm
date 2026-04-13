@@ -295,7 +295,7 @@ def parse_args():
     parser.add_argument(
         "--temperature",
         type=float,
-        default=1.0,
+        default=3.0,
         help="Softmax temperature T for analysis. Probabilities are computed as softmax(logits / T).",
     )
     return parser.parse_args()
