@@ -63,8 +63,8 @@ def main():
 
     # --- 1. 路径和环境配置 ---
     BASE_DIR = args.base_dir
-    DATA_ROOT = args.data_root if args.data_root else f"{BASE_DIR}/processed_dataset/"
-    TEST_JSON = args.test_json if args.test_json else f"{DATA_ROOT}/test.json"
+    DATA_ROOT = args.data_root if args.data_root else f"{BASE_DIR}/real_test_data"
+    TEST_JSON = args.test_json if args.test_json else f"{DATA_ROOT}/real_test.json"
     default_out = f"{DATA_ROOT}/test_result_{args.llm_key}.json"
     OUTPUT_JSON = args.output_json if args.output_json else default_out
 
