@@ -9,6 +9,39 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import matplotlib
+from matplotlib import font_manager
+
+
+# 尝试注册系统中常见的中文字体，避免中文显示为乱码
+def _setup_chinese_font():
+    candidates = [
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansSC-Regular.otf",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        "/usr/share/fonts/truetype/arphic/ukai.ttc",
+        "/usr/share/fonts/truetype/arphic/uming.ttc",
+        "/usr/share/fonts/truetype/fonts-noto-cjk/NotoSansCJK-Regular.ttc",
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            try:
+                font_manager.fontManager.addfont(p)
+                fp = font_manager.FontProperties(fname=p)
+                name = fp.get_name()
+                matplotlib.rcParams['font.family'] = name
+                matplotlib.rcParams['axes.unicode_minus'] = False
+                return name
+            except Exception:
+                continue
+    # 未找到合适字体时，仍然确保不把负号显示成方块
+    matplotlib.rcParams['axes.unicode_minus'] = False
+    return None
+
+
+# 在模块导入时尝试配置中文字体
+_CHINESE_FONT_NAME = _setup_chinese_font()
 
 
 def _get_class_names_for_task(task_name, task_map, num_classes):
@@ -41,17 +74,18 @@ def _save_confusion_matrix_image(cm, class_names, task_name, save_path):
     )
 
     num_classes = len(class_names)
-    fig_size = min(max(8, num_classes * 0.7), 24)
+    fig_size = min(max(10, num_classes * 0.9), 24)
     fig, ax = plt.subplots(figsize=(fig_size, fig_size))
     im = ax.imshow(cm_norm, interpolation='nearest', cmap='Blues', vmin=0.0, vmax=1.0)
 
-    ax.set_title(f"Confusion Matrix - {task_name}")
-    ax.set_xlabel("Predicted label")
-    ax.set_ylabel("True label")
+    ax.set_title(f"{task_name} - 混淆矩阵", fontsize=30, pad=14)
+    ax.set_xlabel("预测标签", fontsize=30, labelpad=10)
+    ax.set_ylabel("真实标签", fontsize=30, labelpad=10)
     ax.set_xticks(np.arange(num_classes))
     ax.set_yticks(np.arange(num_classes))
-    ax.set_xticklabels(class_names, rotation=45, ha='right')
-    ax.set_yticklabels(class_names)
+    ax.set_xticklabels(class_names, rotation=45, ha='right', fontsize=25)
+    ax.set_yticklabels(class_names, fontsize=25)
+    ax.tick_params(axis='both', which='major', labelsize=25)
 
     # 类别太多时只画热力图，避免文字重叠
     if num_classes <= 15:
@@ -61,15 +95,14 @@ def _save_confusion_matrix_image(cm, class_names, task_name, save_path):
                 ax.text(
                     j,
                     i,
-                    f"{cm_np[i, j]}\n{cm_norm[i, j] * 100:.1f}%",
+                    #f"{cm_np[i, j]}\n{cm_norm[i, j] * 100:.1f}%",
+                    f"{cm_norm[i, j] * 100:.1f}%",
                     ha='center',
                     va='center',
                     color='white' if cm_norm[i, j] > threshold else 'black',
-                    fontsize=8,
+                    fontsize=25,
                 )
 
-    cbar = fig.colorbar(im, ax=ax)
-    cbar.set_label('Row-normalized ratio')
     plt.tight_layout()
     plt.savefig(save_path, dpi=220)
     plt.close(fig)
